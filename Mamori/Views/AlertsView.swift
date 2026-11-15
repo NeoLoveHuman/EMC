@@ -43,6 +43,8 @@ struct AlertsView: View {
                 }
             }
             .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
             .animation(Theme.motion(Theme.motionQuick, reduce: reduceMotion), value: alerts.count)
         }
     }

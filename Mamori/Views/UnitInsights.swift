@@ -403,7 +403,7 @@ struct CameraCard: View {
                         Text(store.t("live"))
                     }
                     .font(Theme.label)
-                    .foregroundStyle(Theme.onDark)
+                    .foregroundStyle(Theme.onPhoto)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(Theme.cameraOverlay, in: Capsule())
@@ -413,7 +413,7 @@ struct CameraCard: View {
                     Text(now.formatted(date: .omitted, time: .standard))
                         .font(Theme.label)
                         .monospacedDigit()
-                        .foregroundStyle(Theme.onDark)
+                        .foregroundStyle(Theme.onPhoto)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
                         .background(Theme.cameraOverlay, in: Capsule())
@@ -422,7 +422,7 @@ struct CameraCard: View {
                 .overlay(alignment: .bottomLeading) {
                     Text(store.t("unit", ["id": unit.id]) + " · " + store.t("tray_n", ["n": "1"]))
                         .font(Theme.label)
-                        .foregroundStyle(Theme.onDark)
+                        .foregroundStyle(Theme.onPhoto)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
                         .background(Theme.cameraOverlay, in: Capsule())

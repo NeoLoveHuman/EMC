@@ -12,7 +12,7 @@ struct MamoriApp: App {
         WindowGroup {
             RootView()
                 .environment(store)
-                .preferredColorScheme(.light)
+                .mamoriAppearance()
                 .onOpenURL { url in store.handle(url: url) }
                 .task {
                     NotificationService.shared.requestPermission()
@@ -287,7 +287,7 @@ struct VoiceBubble: View {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "sparkles")
                     .font(Theme.headline)
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(Theme.accentOnInk)
                     .accessibilityHidden(true)
                 answerText
                 Spacer(minLength: 0)
@@ -382,7 +382,7 @@ struct ThinkingDots: View {
                     .foregroundStyle(Theme.onDark)
                 ForEach(0..<3, id: \.self) { i in
                     Circle()
-                        .fill(Theme.accent)
+                        .fill(Theme.accentOnInk)
                         .frame(width: 8, height: 8)
                         .opacity(i == phase ? 1 : 0.3)
                 }

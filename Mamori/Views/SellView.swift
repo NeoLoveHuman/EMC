@@ -296,7 +296,7 @@ struct SellView: View {
             HStack(spacing: 8) {
                 Text(netText)
                     .font(Theme.headline)
-                    .foregroundStyle(Theme.ink)
+                    .foregroundStyle(isBest ? Theme.onAccent : Theme.ink)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background(netFill, in: Capsule())

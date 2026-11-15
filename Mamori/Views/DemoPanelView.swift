@@ -18,6 +18,8 @@ struct DemoPanelView: View {
     @State private var voiceCounts: [String: Int] = [:]
     @State private var preflightRunning: Bool = false
     @State private var preflightDone: Bool = false
+    /// Light / dark override for the whole app ("system", "light", "dark").
+    @AppStorage(Theme.appearanceKey) private var appearance: String = "system"
 
     private static let debounceSeconds: TimeInterval = 1.5
     private static let voiceCodes: [String] = ["te-IN", "hi-IN", "ja-JP", "en-IN"]
@@ -30,6 +32,7 @@ struct DemoPanelView: View {
                 statusSection
                 voiceSection
                 delaySection
+                appearanceSection
                 resetSection
             }
             .navigationTitle("Demo")
@@ -100,6 +103,17 @@ struct DemoPanelView: View {
             Picker("Delay", selection: delayBinding) {
                 Text(verbatim: "5 s").tag(5.0)
                 Text(verbatim: "10 s").tag(10.0)
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    private var appearanceSection: some View {
+        Section("Appearance") {
+            Picker("Appearance", selection: $appearance) {
+                Text(verbatim: "System").tag("system")
+                Text(verbatim: "Light").tag("light")
+                Text(verbatim: "Dark").tag("dark")
             }
             .pickerStyle(.segmented)
         }

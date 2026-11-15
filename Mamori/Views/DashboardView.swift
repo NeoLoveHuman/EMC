@@ -1,29 +1,94 @@
 import SwiftUI
 
-/// First screen: the whole farm at a glance, as rings, with voice on top.
+/// First screen: the whole farm as a stack of small folded cards.
+/// Tap a card to open it in place; opening one closes the other.
+/// Collapsed, everything fits on one 6.1" screen without scrolling.
 struct DashboardView: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// The one open card (nil = all folded).
+    @State private var openSection: HomeSection? = nil
+    @State private var didSetInitialSection: Bool = false
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: Theme.spacing) {
-                    header
-                    // First two seconds: is my crop safe, when is it dry, what is it worth.
-                    HomeStatusCard()
-                    WeatherCard()
-                    hero
-                    unitRow
-                    statRow
-                    todayCard
-                    FieldCard()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    cards(proxy: proxy)
                 }
-                .padding(Theme.padding)
-                .padding(.bottom, Theme.scrollBottomInset)
+                .background(Theme.background)
             }
-            .background(Theme.background)
             .navigationBarTitleDisplayMode(.inline)
             .mamoriToolbar()
+        }
+        .onAppear(perform: setInitialSection)
+        .onChange(of: store.homeStatusLevel) { _, newLevel in
+            statusLevelChanged(newLevel)
+        }
+    }
+
+    private func cards(proxy: ScrollViewProxy) -> some View {
+        VStack(spacing: Theme.space3) {
+            header
+            HomeStatusCard(isExpanded: isOpen(.status),
+                           onToggle: { toggle(.status, proxy: proxy) })
+                .id(HomeSection.status)
+            WeatherCard(isExpanded: isOpen(.weather),
+                        onToggle: { toggle(.weather, proxy: proxy) })
+                .id(HomeSection.weather)
+            HomeUnitsCard(isExpanded: isOpen(.units),
+                          onToggle: { toggle(.units, proxy: proxy) })
+                .id(HomeSection.units)
+            HomePriceCard(isExpanded: isOpen(.price),
+                          onToggle: { toggle(.price, proxy: proxy) })
+                .id(HomeSection.price)
+            HomeFieldCard(isExpanded: isOpen(.field),
+                          onToggle: { toggle(.field, proxy: proxy) })
+                .id(HomeSection.field)
+        }
+        .padding(Theme.padding)
+        .padding(.bottom, Theme.scrollBottomInset)
+    }
+
+    // MARK: Open / close
+
+    private func isOpen(_ section: HomeSection) -> Bool {
+        openSection == section
+    }
+
+    /// Opens `section` (closing any other) or closes it. A card opened lower down
+    /// scrolls to the top so its detail is on screen.
+    private func toggle(_ section: HomeSection, proxy: ScrollViewProxy) {
+        let opening: Bool = openSection != section
+        let animation: Animation? = HomeStyle.spring(reduce: reduceMotion)
+        withAnimation(animation) {
+            openSection = opening ? section : nil
+        }
+        guard opening, section != .status else { return }
+        withAnimation(animation) {
+            proxy.scrollTo(section, anchor: .top)
+        }
+    }
+
+    /// Launch: all folded, unless rain is coming or the advice is SELL.
+    private func setInitialSection() {
+        guard !didSetInitialSection else { return }
+        didSetInitialSection = true
+        if store.homeStatusLevel != .safe {
+            openSection = .status
+        }
+    }
+
+    /// Rain or SELL fires (demo panel): open the status card. Reset demo: fold it again.
+    private func statusLevelChanged(_ level: HomeStatusLevel) {
+        let animation: Animation? = HomeStyle.spring(reduce: reduceMotion)
+        withAnimation(animation) {
+            if level != .safe {
+                openSection = .status
+            } else if openSection == .status {
+                openSection = nil
+            }
         }
     }
 
@@ -34,7 +99,7 @@ struct DashboardView: View {
             Image("MamoriLogo")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 52, height: 52)
+                .frame(width: 44, height: 44)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.space3))
                 .accessibilityHidden(true)
             Text(verbatim: "Mamori")
@@ -50,175 +115,6 @@ struct DashboardView: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 3) { store.showDemoPanel = true }
     }
-
-    // MARK: Hero: concentric rings, one per unit
-
-    private var hero: some View {
-        let units = store.state.units
-        let now = store.now
-        let step = Theme.heroRingWidth + Theme.heroRingGap
-        let inner = Theme.heroRingSize - 2 * CGFloat(units.count) * step
-
-        return ZStack {
-            ForEach(units.indices, id: \.self) { index in
-                ProgressRing(progress: heroProgress(units[index], now: now),
-                             color: Theme.unitRingColor(index),
-                             lineWidth: Theme.heroRingWidth)
-                    .padding(CGFloat(index) * step)
-            }
-            VStack(spacing: 2) {
-                Text(Fmt.kg(store.state.totalWeightKg))
-                    .font(Theme.ringNumber)
-                    .foregroundStyle(Theme.ink)
-                    .contentTransition(.numericText())
-                Text(store.t("crop_protected"))
-                    .font(Theme.small)
-                    .foregroundStyle(Theme.inkStrong)
-                Text(store.t("units_n", ["n": "\(units.count)"]))
-                    .font(Theme.small)
-                    .foregroundStyle(Theme.inkStrong)
-            }
-            .lineLimit(1)
-            .minimumScaleFactor(0.4)
-            .frame(width: max(60, inner - 12))
-        }
-        .frame(width: Theme.heroRingSize, height: Theme.heroRingSize)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 6)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(heroLabel)
-    }
-
-    private func heroProgress(_ unit: Unit, now: Date) -> Double {
-        Simulation.dryingProgress(moisture: Simulation.moisture(of: unit, at: now))
-    }
-
-    private var heroLabel: String {
-        let weight: String = Fmt.kg(store.state.totalWeightKg)
-        let protected: String = store.t("crop_protected")
-        let count: String = store.t("units_n", ["n": "\(store.state.units.count)"])
-        return [weight, protected, count].joined(separator: ", ")
-    }
-
-    // MARK: One small ring per unit (tap → that unit)
-
-    private var unitRow: some View {
-        let now: Date = store.now
-        let units: [Unit] = store.state.units
-        return HStack(alignment: .top, spacing: Theme.space2) {
-            ForEach(units.indices, id: \.self) { index in
-                unitCell(index: index, unit: units[index], now: now)
-            }
-        }
-        .card()
-    }
-
-    private func unitCell(index: Int, unit: Unit, now: Date) -> some View {
-        let moisture: Double = Simulation.moisture(of: unit, at: now)
-        let name: String = store.t("unit", ["id": unit.id])
-        let crop: String = store.t(unit.crop)
-        let status: String = shortStatus(unit, now: now)
-        let mode: String = store.t(unit.mode == .drying ? "mode_drying" : "mode_storing")
-        let moistureText: String = store.t("moisture") + " " + Fmt.percent1(moisture)
-        let spoken: String = [name, crop, mode, status, moistureText].joined(separator: ", ")
-        let dot: Color = Theme.unitRingColor(index)
-
-        return Button {
-            store.openUnit(unit.id)
-        } label: {
-            VStack(spacing: Theme.space1) {
-                MoistureRing(moisture: moisture,
-                             size: 92,
-                             lineWidth: 9,
-                             showTargetMarker: false,
-                             numberFont: Theme.dashRingNumber,
-                             animateOnAppear: true)
-                    .padding(.bottom, Theme.space1)
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(dot)
-                        .frame(width: 12, height: 12)
-                    Text(name)
-                        .font(Theme.label)
-                        .foregroundStyle(Theme.ink)
-                }
-                Text(crop)
-                    .font(Theme.small)
-                    .foregroundStyle(Theme.inkStrong)
-                Text(status)
-                    .font(Theme.smallBold)
-                    .foregroundStyle(Theme.ink)
-            }
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
-            .frame(maxWidth: .infinity, minHeight: Theme.minTap)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(spoken)
-        .accessibilityHint(store.t("home_open_unit"))
-        .accessibilityAddTraits(.isButton)
-    }
-
-    private func shortStatus(_ unit: Unit, now: Date) -> String {
-        let p = Simulation.profile(for: unit.crop)
-        let day = Simulation.day(since: unit.batchStart, at: now)
-        switch unit.mode {
-        case .storing: return store.t("mode_storing")
-        case .drying:
-            return p.isDry(day) ? store.t("ready")
-                                : store.t("day_of", ["d": "\(p.dayNumber(day))", "t": "\(Int(p.unitDays))"])
-        }
-    }
-
-    // MARK: Stat circles: price and advice (weather has its own card above)
-
-    private var statRow: some View {
-        let isSell: Bool = store.state.advice == .sell
-        let change: Int = store.state.priceChangePercent
-
-        let priceValue: String = Fmt.int(store.state.pricePer100kg)
-        let priceCaption: String = store.t("per_100kg") + " · " + Fmt.signedPercent(change) + "%"
-        let adviceSymbol: String = isSell ? "checkmark" : "hand.raised.fill"
-        let adviceValue: String = store.t(isSell ? "sell" : "hold")
-        let adviceFill: Color = isSell ? Theme.accent : Theme.ink
-        let adviceInk: Color = isSell ? Theme.onAccent : Theme.onDark
-        let priceInk: Color = change >= 0 ? Theme.good : Theme.danger
-
-        return HStack(alignment: .top, spacing: Theme.space2) {
-            Button {
-                store.selectedTab = .network
-            } label: {
-                StatCircle(symbol: "indianrupeesign", value: priceValue, caption: priceCaption,
-                           fill: Theme.surface, foreground: priceInk)
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                store.selectedTab = .network
-            } label: {
-                StatCircle(symbol: adviceSymbol, value: adviceValue, caption: store.t("today"),
-                           fill: adviceFill, foreground: adviceInk)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    // MARK: Today: advice and the reasons behind it
-
-    private var todayCard: some View {
-        VStack(alignment: .leading, spacing: Theme.space2) {
-            MamoriCardTitle(text: store.t("today"), symbol: "calendar")
-            Text(store.adviceSentence)
-                .font(Theme.dynHeadline)
-                .foregroundStyle(Theme.ink)
-                .fixedSize(horizontal: false, vertical: true)
-            ReasonList()
-        }
-        .card()
-    }
-
 }
 
 // MARK: - Why: the facts behind the advice
@@ -261,6 +157,8 @@ struct ReasonList: View {
 
 // MARK: - Mamori Eye: one field card (add-on)
 
+/// Full field card (title + add-on badge + detail). Home now shows `FieldDetail`
+/// inside a folding card; this stays for any other screen that wants the whole card.
 struct FieldCard: View {
     @Environment(AppStore.self) private var store
 
@@ -271,13 +169,26 @@ struct FieldCard: View {
                 Spacer(minLength: Theme.space2)
                 Text(store.t("addon"))
                     .font(Theme.small)
-                    .foregroundStyle(Theme.onDark)
+                    .foregroundStyle(Theme.background)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background(Theme.ink, in: Capsule())
             }
+            FieldDetail()
+        }
+        .card()
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Field efficiency, the missed edge and soil moisture at three depths.
+struct FieldDetail: View {
+    @Environment(AppStore.self) private var store
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.space2) {
             Text(store.t("field_eff", ["p": "\(Simulation.fieldEfficiencyPercent)"]))
                 .font(Theme.dynHeadline)
                 .foregroundStyle(Theme.ink)
@@ -287,28 +198,31 @@ struct FieldCard: View {
                 .foregroundStyle(Theme.warn)
                 .fixedSize(horizontal: false, vertical: true)
             Divider()
-            HStack(spacing: Theme.spacing) {
-                Text(store.t("soil_moisture"))
-                    .font(Theme.label)
-                    .foregroundStyle(Theme.inkStrong)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                Spacer(minLength: 0)
-                ForEach(Simulation.soilMoisture, id: \.depthCm) { reading in
-                    VStack(spacing: 2) {
-                        Text(verbatim: "\(reading.percent)%")
-                            .font(Theme.headline)
-                            .foregroundStyle(Theme.ink)
-                        Text(verbatim: "\(reading.depthCm) cm")
-                            .font(Theme.small)
-                            .foregroundStyle(Theme.inkStrong)
-                    }
-                    .lineLimit(1)
+            soilRow
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var soilRow: some View {
+        HStack(spacing: Theme.spacing) {
+            Text(store.t("soil_moisture"))
+                .font(Theme.label)
+                .foregroundStyle(Theme.inkStrong)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            ForEach(Simulation.soilMoisture, id: \.depthCm) { reading in
+                VStack(spacing: 2) {
+                    Text(verbatim: "\(reading.percent)%")
+                        .font(Theme.headline)
+                        .foregroundStyle(Theme.ink)
+                    Text(verbatim: "\(reading.depthCm) cm")
+                        .font(Theme.small)
+                        .foregroundStyle(Theme.inkStrong)
                 }
+                .lineLimit(1)
             }
         }
-        .card()
-        .accessibilityElement(children: .combine)
     }
 }
 

@@ -1,25 +1,40 @@
 import SwiftUI
+import UIKit
 
 /// Every colour, font, radius and spacing used by the app AND the widget.
 /// Restyling the product is a one-file change: edit only this file.
 enum Theme {
 
     // MARK: - Colours
-    static let background   = Color(hex: 0xFFFFFF)
-    static let surface      = Color(hex: 0xF4F5F0)
-    static let ink          = Color(hex: 0x000000)
-    static let inkMuted     = Color(hex: 0x5F6368)
-    static let onDark       = Color(hex: 0xFFFFFF)
-    static let accent       = Color(hex: 0xC9F03A)   // poster lime
-    static let onAccent     = Color(hex: 0x000000)
-    static let ringTrack    = Color(hex: 0xCDD2BF)
-    static let good         = Color(hex: 0x1E8E3E)
-    static let warn         = Color(hex: 0xE37400)
-    static let danger       = Color(hex: 0xC5221F)
-    static let rain         = Color(hex: 0x1A73E8)
-    static let sun          = Color(hex: 0xF5A300)
-    static let shadow       = Color(hex: 0x000000, opacity: 0.18)
+    // Every colour has a light value (unchanged from the light-only design) and a dark value.
+    // `ink` is "the strongest contrast colour": black in light mode, off-white in dark mode.
+    // `onDark` is "text on an ink-filled or status-filled chip": white in light mode,
+    // near-black in dark mode (in dark mode those fills are bright, so their text is dark).
+    // `onAccent` stays black in both modes: text on lime is always dark.
+    static let background   = Color(light: 0xFFFFFF, dark: 0x12130F)
+    static let surface      = Color(light: 0xF4F5F0, dark: 0x1E2019)
+    static let ink          = Color(light: 0x000000, dark: 0xF2F3EC)
+    static let inkMuted     = Color(light: 0x5F6368, dark: 0xA7AB9F)
+    static let onDark       = Color(light: 0xFFFFFF, dark: 0x12130F)
+    static let accent       = Color(light: 0xC9F03A, dark: 0xC4EA3A)   // poster lime
+    static let onAccent     = Color(light: 0x000000, dark: 0x000000)
+    static let ringTrack    = Color(light: 0xCDD2BF, dark: 0x474C3E)
+    static let good         = Color(light: 0x1E8E3E, dark: 0x4CC46A)
+    static let warn         = Color(light: 0xE37400, dark: 0xFFA33A)
+    static let danger       = Color(light: 0xC5221F, dark: 0xF26B61)
+    static let rain         = Color(light: 0x1A73E8, dark: 0x6AA6FF)
+    static let sun          = Color(light: 0xF5A300, dark: 0xFFC53D)
+    static let shadow       = Color(light: 0x000000, lightOpacity: 0.18, dark: 0x000000, darkOpacity: 0.55)
     static let clear        = Color.clear
+
+    /// Text and icons on a photo or the camera overlay: white in both modes.
+    static let onPhoto      = Color(light: 0xFFFFFF, dark: 0xFFFFFF)
+    /// Lime-family accent drawn ON an ink fill (voice answer card): lime in light mode,
+    /// deep olive in dark mode, where the ink fill is off-white.
+    static let accentOnInk  = Color(light: 0xC9F03A, dark: 0x4E6B00)
+    /// Card edge. Invisible in light mode (no change); a faint light edge in dark mode,
+    /// where shadows and the surface-vs-background step are hard to see on a projector.
+    static let cardEdge     = Color(light: 0xFFFFFF, lightOpacity: 0, dark: 0xFFFFFF, darkOpacity: 0.10)
 
     /// Colour-coded readings: green is fine, amber is watch, red is bad.
     /// PLACEHOLDER thresholds: check against the business model.
@@ -33,8 +48,10 @@ enum Theme {
     /// ≤11.5% green → 13.5% amber → 35% blue.
     static func wetnessRamp(_ moisture: Double) -> Color {
         if moisture <= 11.5 { return good }
-        if moisture <= 13.5 { return blend(0x1E8E3E, 0xE37400, (moisture - 11.5) / 2) }
-        return blend(0xE37400, 0x1A73E8, (moisture - 13.5) / 21.5)
+        if moisture <= 13.5 {
+            return blend(light: (0x1E8E3E, 0xE37400), dark: (0x4CC46A, 0xFFA33A), (moisture - 11.5) / 2)
+        }
+        return blend(light: (0xE37400, 0x1A73E8), dark: (0xFFA33A, 0x6AA6FF), (moisture - 13.5) / 21.5)
     }
 
     /// Humidity inside a unit. Drying chamber should be dry air; storage should stay under ~65%.
@@ -46,37 +63,38 @@ enum Theme {
     static func outsideHumidityColor(_ h: Int) -> Color { h <= 65 ? good : (h <= 80 ? warn : danger) }
 
     // Weather card
-    static let weatherSlot      = Color(hex: 0xFFFFFF)
-    static let weatherRainCard  = Color(hex: 0x1A73E8)
+    static let weatherSlot      = Color(light: 0xFFFFFF, dark: 0x2A2D24)
+    static let weatherRainCard  = Color(light: 0x1A73E8, dark: 0x5E9EF5)
 
     // Unit cut-away diagram
-    static let unitShell    = Color(hex: 0xEEF3E2)
-    static let unitFrame    = Color(hex: 0x000000)
-    static let ground       = Color(hex: 0x8D6E63)
-    static let airflow      = Color(hex: 0xF5A300)
-    static let airflowIdle  = Color(hex: 0x9AA0A6, opacity: 0.45)
-    static let scanLine     = Color(hex: 0xC9F03A, opacity: 0.55)
+    static let unitShell    = Color(light: 0xEEF3E2, dark: 0x2A2E22)
+    static let unitFrame    = Color(light: 0x000000, dark: 0xC9CDBF)
+    static let ground       = Color(light: 0x8D6E63, dark: 0xA1887F)
+    static let airflow      = Color(light: 0xF5A300, dark: 0xFFC53D)
+    static let airflowIdle  = Color(light: 0x9AA0A6, lightOpacity: 0.45, dark: 0x8E9488, darkOpacity: 0.55)
+    static let scanLine     = Color(light: 0xC9F03A, lightOpacity: 0.55, dark: 0xC4EA3A, darkOpacity: 0.55)
 
-    private static func blend(_ a: UInt32, _ b: UInt32, _ t: Double) -> Color {
-        let t = min(1, max(0, t))
-        func c(_ h: UInt32, _ shift: UInt32) -> Double { Double((h >> shift) & 0xFF) / 255 }
-        return Color(.sRGB,
-                     red: c(a, 16) + (c(b, 16) - c(a, 16)) * t,
-                     green: c(a, 8) + (c(b, 8) - c(a, 8)) * t,
-                     blue: c(a, 0) + (c(b, 0) - c(a, 0)) * t,
-                     opacity: 1)
+    /// Mixes two colours in sRGB. `light` and `dark` are (from, to) hex pairs.
+    private static func blend(light: (UInt32, UInt32), dark: (UInt32, UInt32), _ t: Double) -> Color {
+        let k: CGFloat = CGFloat(min(1, max(0, t)))
+        let l: UIColor = UIColor.mix(light.0, light.1, k)
+        let d: UIColor = UIColor.mix(dark.0, dark.1, k)
+        return Color(uiColor: UIColor.dynamic(light: l, dark: d))
     }
 
     /// Ring colour per unit on the dashboard (A, B, C, then repeats).
-    static let unitRingColors: [Color] = [Color(hex: 0xC9F03A), Color(hex: 0x000000), Color(hex: 0x6E8B00)]
+    static let unitRingColors: [Color] = [Color(light: 0xC9F03A, dark: 0xC4EA3A),
+                                          Color(light: 0x000000, dark: 0xF2F3EC),
+                                          Color(light: 0x6E8B00, dark: 0x8FB21A)]
     static func unitRingColor(_ index: Int) -> Color { unitRingColors[index % unitRingColors.count] }
 
-    static let chartUnit    = Color(hex: 0x000000)
-    static let chartGround  = Color(hex: 0x9AA0A6)
-    static let chartPrice   = Color(hex: 0x000000)
-    static let chartFill    = Color(hex: 0xC9F03A, opacity: 0.45)
-    static let chartGuide   = Color(hex: 0x5F6368)
+    static let chartUnit    = Color(light: 0x000000, dark: 0xF2F3EC)
+    static let chartGround  = Color(light: 0x9AA0A6, dark: 0x8E9488)
+    static let chartPrice   = Color(light: 0x000000, dark: 0xF2F3EC)
+    static let chartFill    = Color(light: 0xC9F03A, lightOpacity: 0.45, dark: 0xC4EA3A, darkOpacity: 0.30)
+    static let chartGuide   = Color(light: 0x5F6368, dark: 0xA7AB9F)
 
+    // Camera card: a photo, so the same in both modes.
     static let cameraPlaceholderTop    = Color(hex: 0xB3261E)
     static let cameraPlaceholderBottom = Color(hex: 0x5E0F0B)
     static let cameraOverlay           = Color(hex: 0x000000, opacity: 0.55)
@@ -128,13 +146,17 @@ enum Theme {
     // MARK: - Projector polish (added 15 Nov). Additive only: nothing above changed.
 
     /// Secondary text that survives a washed-out projector (about 10:1 on white, vs 6:1 for inkMuted).
-    static let inkStrong    = Color(hex: 0x3C4043)
-    /// Status card backgrounds. White text on each is at least 5.5:1.
-    static let statusSafe   = Color(hex: 0x137333)
-    static let statusDanger = Color(hex: 0xC5221F)
+    static let inkStrong    = Color(light: 0x3C4043, dark: 0xCDD0C5)
+    /// Status card backgrounds. Light: white text on each is at least 5.5:1.
+    /// Dark: brighter fills with near-black text (onDark), at least 6:1.
+    static let statusSafe   = Color(light: 0x137333, dark: 0x3AAE5A)
+    static let statusDanger = Color(light: 0xC5221F, dark: 0xEF675D)
     /// Unread alert row tint and its marker.
-    static let unreadRow    = Color(hex: 0xC9F03A, opacity: 0.22)
-    static let hairline     = Color(hex: 0xCDD2BF)
+    static let unreadRow    = Color(light: 0xC9F03A, lightOpacity: 0.22, dark: 0xC4EA3A, darkOpacity: 0.16)
+    static let hairline     = Color(light: 0xCDD2BF, dark: 0x34372D)
+
+    /// Presenter override for light / dark (Demo panel). Values: "system", "light", "dark".
+    static let appearanceKey: String = "mamori.appearance"
 
     /// One spacing scale: 4 · 8 · 12 · spacing (14) · padding (16).
     static let space1: CGFloat = 4
@@ -185,6 +207,43 @@ extension Color {
     }
 }
 
+extension Color {
+    /// Dynamic colour: `light` in light mode, `dark` in dark mode (follows the view's colour scheme).
+    init(light: UInt32, dark: UInt32) {
+        self.init(light: light, lightOpacity: 1, dark: dark, darkOpacity: 1)
+    }
+
+    init(light: UInt32, lightOpacity: Double, dark: UInt32, darkOpacity: Double) {
+        let l: UIColor = UIColor(hex: light, alpha: CGFloat(lightOpacity))
+        let d: UIColor = UIColor(hex: dark, alpha: CGFloat(darkOpacity))
+        self.init(uiColor: UIColor.dynamic(light: l, dark: d))
+    }
+}
+
+extension UIColor {
+    convenience init(hex: UInt32, alpha: CGFloat) {
+        let r: CGFloat = CGFloat((hex >> 16) & 0xFF) / 255
+        let g: CGFloat = CGFloat((hex >> 8) & 0xFF) / 255
+        let b: CGFloat = CGFloat(hex & 0xFF) / 255
+        self.init(red: r, green: g, blue: b, alpha: alpha)
+    }
+
+    static func dynamic(light: UIColor, dark: UIColor) -> UIColor {
+        UIColor(dynamicProvider: { (traits: UITraitCollection) -> UIColor in
+            traits.userInterfaceStyle == .dark ? dark : light
+        })
+    }
+
+    /// Straight sRGB mix of two hex colours, t in 0...1.
+    static func mix(_ a: UInt32, _ b: UInt32, _ t: CGFloat) -> UIColor {
+        func c(_ h: UInt32, _ shift: UInt32) -> CGFloat { CGFloat((h >> shift) & 0xFF) / 255 }
+        let r: CGFloat = c(a, 16) + (c(b, 16) - c(a, 16)) * t
+        let g: CGFloat = c(a, 8) + (c(b, 8) - c(a, 8)) * t
+        let bl: CGFloat = c(a, 0) + (c(b, 0) - c(a, 0)) * t
+        return UIColor(red: r, green: g, blue: bl, alpha: 1)
+    }
+}
+
 extension View {
     /// Standard rounded card used across the app.
     func card() -> some View {
@@ -192,6 +251,7 @@ extension View {
             .padding(Theme.padding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.cardEdge, lineWidth: 1))
     }
 
     /// Same card, any fill (status card, rain weather card).

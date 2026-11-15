@@ -163,3 +163,14 @@ Built in Xcode with no issues. Previous code is in `Desktop/Mamori_backup_round2
 - **Depth:** unit power row, batch timeline, storage card for Unit B; hub season card, operator tasks, booking queue, per-unit detail; net price per market after transport and 1% fee, "Wait a week?" card; batch history with certificates.
 - **New files:** `Strings+Core/Home/Units.swift`, `Services/UnitSim.swift`, `Views/Components/HomeStatusCard.swift`.
 - **Open:** dry vs fresh weight story (1,000 kg dry = about 3.2 t fresh); new Telugu/Hindi strings unchecked; past batch dates fall in Aug–Sep; `resetDemo` returns the language to English.
+
+---
+
+## Round 4 · 15 Nov, 19:30: compact expandable Home, dark mode
+
+Built in Xcode with no issues. Previous code is in `Desktop/Mamori_backup_round3`.
+
+- **Home:** five small cards that fit one screen (status, weather, units, price, field). Tap one to open it in place; only one is open at a time. Status opens to "what happens next" per unit and a "Ready to sell" block with a jump to Network. Weather opens to the next 3 hours, the rest of today and the next 3 days with a Good / Slow / Cover drying verdict. Status opens by itself on rain or SELL.
+- **Dark mode:** every Theme colour has a light and a dark value; the app follows the phone setting. Demo panel → Appearance: System / Light / Dark. Light mode is unchanged. Use Light on a projector.
+- **New files:** `Views/Components/ExpandableCard.swift`, `HomeCards.swift`, `AppearanceModifier.swift`, `Services/HomeSim.swift` (extra forecast, all PLACEHOLDER).
+- **Watch for:** day 3 of the forecast shows "Cover" (rain) in the normal scene; after "Price jump" the status card totals Unit A + B (₹305,760) while Sell shows ₹156,000 for the batch; new Telugu/Hindi/Japanese strings unchecked.
